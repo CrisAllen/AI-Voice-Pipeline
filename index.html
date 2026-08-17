@@ -33,6 +33,11 @@
         cursor: pointer;
         margin-right: 10px;
       }
+      button.danger {
+        background: #7f1d1d;
+        color: #fee2e2;
+        border: 1px solid rgba(239, 68, 68, 0.7);
+      }
       input {
         width: 100%;
         box-sizing: border-box;
@@ -61,18 +66,35 @@
       <label for="endpoint">Server URL</label>
       <input id="endpoint" value="https://YOUR-NGROK-URL.ngrok-free.app/voice" />
       <button id="start">Start Voice Capture</button>
+      <button id="stop" class="danger">Stop Listening</button>
       <div id="status" class="status">Ready.</div>
     </div>
 
     <script>
       var endpointInput = document.getElementById('endpoint');
       const statusEl = document.getElementById('status');
+      const startBtn = document.getElementById('start');
+      const stopBtn = document.getElementById('stop');
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition = null;
 
       function setStatus(text, kind='') {
         statusEl.textContent = text;
         statusEl.className = 'status ' + kind;
       }
+
+      function stopListening() {
+        if (recognition) {
+          recognition.stop();
+          recognition = null;
+        }
+        startBtn.textContent = 'Start Voice Capture';
+        setStatus('Listening stopped.');
+      }
+
+      stopBtn.addEventListener('click', () => {
+        stopListening();
+      });
 
       document.getElementById('start').addEventListener('click', () => {
         if (!SpeechRecognition) {
@@ -80,10 +102,15 @@
           return;
         }
 
-        const recognition = new SpeechRecognition();
+        if (recognition) {
+          stopListening();
+        }
+
+        recognition = new SpeechRecognition();
         recognition.lang = 'en-US';
         recognition.interimResults = false;
 
+        startBtn.textContent = 'Listening...';
         setStatus('Listening...');
         recognition.start();
 
@@ -111,6 +138,11 @@
 
         recognition.onerror = (event) => {
           setStatus('Speech error: ' + event.error, 'error');
+        };
+
+        recognition.onend = () => {
+          recognition = null;
+          startBtn.textContent = 'Start Voice Capture';
         };
       });
     </script>
