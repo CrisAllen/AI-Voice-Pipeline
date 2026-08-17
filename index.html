@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice to Copilot</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #020617, #0f172a);
+        color: #e2e8f0;
+        font-family: Arial, sans-serif;
+      }
+      .card {
+        width: min(90vw, 600px);
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid #334155;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      }
+      h1 { margin-top: 0; }
+      button {
+        background: #38bdf8;
+        border: none;
+        color: #082f49;
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        margin-right: 10px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px;
+        margin: 12px 0 16px;
+        border-radius: 10px;
+        border: 1px solid #475569;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      .status {
+        background: #0b1220;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        min-height: 90px;
+        padding: 16px;
+        line-height: 1.5;
+      }
+      .success { border-color: rgba(34,197,94,0.8); }
+      .error { border-color: rgba(239,68,68,0.8); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Voice to Copilot</h1>
+      <label for="endpoint">Server URL</label>
+      <input id="endpoint" value="https://YOUR-NGROK-URL.ngrok-free.app/voice" />
+      <button id="start">Start Voice Capture</button>
+      <div id="status" class="status">Ready.</div>
+    </div>
+
+    <script>
+      const endpointInput = document.getElementById('endpoint');
+      const statusEl = document.getElementById('status');
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      function setStatus(text, kind='') {
+        statusEl.textContent = text;
+        statusEl.className = 'status ' + kind;
+      }
+
+      document.getElementById('start').addEventListener('click', () => {
+        if (!SpeechRecognition) {
+          setStatus('Speech recognition is not supported in this browser. Use Chrome or Edge.', 'error');
+          return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+
+        setStatus('Listening...');
+        recognition.start();
+
+        recognition.onresult = async (event) => {
+          const transcript = event.results[0][0].transcript;
+          setStatus('Sending transcript...');
+
+          try {
+            const response = await fetch(endpointInput.value.trim(), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: transcript })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+              throw new Error(data.error || 'Request failed');
+            }
+
+            setStatus('Voice prompt saved and forwarded to local workspace: ' + transcript, 'success');
+          } catch (error) {
+            setStatus('Could not send prompt. Check your tunnel URL and local server: ' + error.message, 'error');
+          }
+        };
+
+        recognition.onerror = (event) => {
+          setStatus('Speech error: ' + event.error, 'error');
+        };
+      });
+    </script>
+  </body>
+</html>
